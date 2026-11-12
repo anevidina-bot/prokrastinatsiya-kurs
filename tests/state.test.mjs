@@ -1,0 +1,13 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {fresh,read,save,normalize,complete,planText,KEY} from '../state.js';
+import {locations,example} from '../content.js';
+test('весь маршрут требует решений, а не кликов; неверные ответы не завершают локацию',()=>{
+ const s=fresh();assert.equal(complete(s,4),false);
+ locations.forEach((l,n)=>{assert.equal(complete(s,n),false);l.scenes.forEach((scene,i)=>{if(scene.type==='choice'){assert.ok(scene.options.every(o=>o.feedback.length>30));s.answers[`${n}:${i}`]=scene.options.findIndex(o=>!o.ok);}});assert.equal(complete(s,n),false);l.scenes.forEach((scene,i)=>{if(scene.type==='choice')s.answers[`${n}:${i}`]=scene.options.findIndex(o=>o.ok);});assert.equal(complete(s,n),true);assert.equal(complete(s,n),true);});assert.deepEqual(s.done,[0,1,2,3,4]);
+});
+test('сохранение и восстановление шага, плана и настроек',()=>{let value;const store={getItem:()=>value,setItem:(k,v)=>{assert.equal(k,KEY);value=v;}};const s=fresh();s.scene=2;s.view='scene';s.plan.task='Подготовить встречу';s.reduced=true;assert.equal(save(store,s),true);assert.deepEqual(read(store).state,s);});
+test('недоступное хранилище и повреждённый JSON не ломают запуск',()=>{const denied={getItem(){throw Error('denied');},setItem(){throw Error('quota');}};assert.deepEqual(read(denied).state,fresh());assert.equal(read(denied).available,false);assert.equal(save(denied,fresh()),false);assert.deepEqual(read({getItem:()=>'{broken'}).state,fresh());assert.equal(save(undefined,fresh()),false);});
+test('повреждённые значения ограничиваются допустимым маршрутом',()=>{const s=normalize({version:1,done:[0,3,4,99],loc:9,scene:999,view:'ending',plan:{task:42,result:'x'.repeat(1200)},answers:{'0:0':0}});assert.deepEqual(s.done,[0]);assert.equal(s.view,'map');assert.equal(s.loc,1);assert.equal(s.scene,4);assert.equal(s.plan.result.length,1000);assert.equal(s.plan.task,undefined);assert.deepEqual(s.answers,{});});
+test('личный план не подменяется примером и не получает оценку',()=>{const s=fresh();s.plan.task='<script>test</script>';assert.ok(planText(s).includes('<script>test</script>'));assert.ok(planText(s).includes('Пока не указано'));assert.ok(!planText(s).includes(example.step));s.useExample=true;assert.ok(planText(s).includes(example.step));assert.ok(!planText(s).includes('<script>'));});
+test('ошибки во всех 17 ситуациях имеют обратную связь и возможность правильного решения',()=>{const questions=locations.flatMap(l=>l.scenes).filter(s=>s.type==='choice');assert.equal(questions.length,17);for(const q of questions){assert.equal(q.options.filter(o=>o.ok).length,1);assert.equal(q.options.filter(o=>!o.ok).length,2);assert.ok(q.effect);}});

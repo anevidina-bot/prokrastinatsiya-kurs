@@ -843,3 +843,12 @@
 .wake-monitor-frame .wake-close:focus-visible {outline:3px solid white;outline-offset:3px;box-shadow:0 0 0 6px #315b98}
 .course-ending > div {max-width:730px}
 .course-ending p:not(.eyebrow) + p {margin-top:22px;color:#f0d39d}
+
+/* На телефонах сцена растёт по содержимому, а Андрей остаётся в пределах экрана. */
+@media(max-width:600px){
+ .sword-scene {height:auto;min-height:calc(100svh - 86px);grid-template-rows:auto 1fr auto;overflow:visible}
+ .sword-scene-stage {height:auto;min-height:0;grid-template-columns:1fr;grid-template-rows:auto auto;gap:12px;padding:16px 24px 0;align-content:center}
+ .sword-scene-stage .speech {grid-row:1;margin:0}
+ .sword-hero {grid-row:2;justify-self:center;align-self:center;width:min(100%,280px);height:clamp(245px,40svh,340px);transform:none}
+ .sword-hero-before,.sword-hero-after {object-position:center center}
+}
